@@ -2,7 +2,7 @@
 const WASTE_TYPES = [
     { key: 'waste_recycle',    sprite: 'waste_plastic.png',   bin: 'recyclage' },
     { key: 'waste_glass',      sprite: 'waste_glass.png',     bin: 'verre'     },
-    { key: 'waste_black_bag',  sprite: 'waste-black_bag.png',  bin: 'black_bin' },
+    { key: 'waste_black_bag',  sprite: 'waste_black_bag.png',  bin: 'black_bin' },
   ];
   
   const PROJECTILE_TYPES = [
@@ -60,7 +60,7 @@ const WASTE_TYPES = [
     // Première vague
     createWaste(this);
   
-    // Clavier
+    // Clavier + changement de bac
     cursors = this.input.keyboard.createCursorKeys();
     this.input.keyboard.on('keydown-ONE',   () => currentBin = BINS[0]);
     this.input.keyboard.on('keydown-TWO',   () => currentBin = BINS[1]);
@@ -79,20 +79,11 @@ const WASTE_TYPES = [
     this.physics.add.collider(bullets, wasteGroup, hitWaste, null, this);
     this.physics.add.overlap(player, wasteGroup, wasteHitsPlayer, null, this);
   
-    // Descente
+    // Descente continue
     moveWasteTimer = this.time.addEvent({
       delay: 2000,
       callback: moveWasteDown,
       callbackScope: this,
-      loop: true
-    });
-  
-    // **NOUVEAU** : Timer de spawn de vagues
-    this.time.addEvent({
-      delay: 8000,              // toutes les 8 secondes
-      callback: () => {
-        if (!isGameOver) createWaste(this);
-      },
       loop: true
     });
   }
@@ -101,19 +92,24 @@ const WASTE_TYPES = [
   function update(time) {
     if (isGameOver) return;
   
-    // Déplacement du joueur
+    // Déplacement joueur
     if (cursors.left.isDown)       player.setVelocityX(-300);
     else if (cursors.right.isDown) player.setVelocityX(300);
     else                             player.setVelocityX(0);
     player.setVelocityY(0);
   
-    // UI du bac
+    // Mise à jour du bac
     binText.setText('Bac: ' + currentBin);
   
-    // Nettoyage des projectiles hors écran
+    // Nettoyage projectiles hors-écran
     bullets.children.each(b => {
       if (b.active && b.y < 0) b.destroy();
     }, this);
+  
+    // **Spawn** nouvelle vague si le groupe est vide
+    if (wasteGroup.countActive(true) === 0) {
+      createWaste(this);
+    }
   }
   
   // === FONCTIONS DE JEU ===
@@ -137,18 +133,24 @@ const WASTE_TYPES = [
           correctBin = waste.getData('bin');
     bullet.destroy();
     waste.destroy();
-  
     if (chosenBin === correctBin) score += 10;
-    else {
-      score -= 5;
-      loseLife.call(this);
-    }
+    else { score -= 5; loseLife.call(this); }
     scoreText.setText('Score: ' + score);
+  
+    // spawn si plus aucun actif
+    if (wasteGroup.countActive(true) === 0 && !isGameOver) {
+      createWaste(this);
+    }
   }
   
   function wasteHitsPlayer(player, waste) {
     waste.destroy();
     loseLife.call(this);
+  
+    // spawn si plus aucun actif
+    if (wasteGroup.countActive(true) === 0 && !isGameOver) {
+      createWaste(this);
+    }
   }
   
   function loseLife() {
@@ -159,8 +161,7 @@ const WASTE_TYPES = [
       invulnerable = true;
       player.setTint(0xff0000);
       this.time.addEvent({ delay: 1000, callback: () => {
-        invulnerable = false;
-        player.clearTint();
+        invulnerable = false; player.clearTint();
       }});
     } else {
       gameOver.call(this);
@@ -180,6 +181,11 @@ const WASTE_TYPES = [
   function moveWasteDown() {
     if (isGameOver) return;
     wasteGroup.children.each(w => w.y += wasteSpeed, this);
+  
+    // spawn si plus aucun actif
+    if (wasteGroup.countActive(true) === 0 && !isGameOver) {
+      createWaste(this);
+    }
   }
   
   function createWaste(scene) {
@@ -197,10 +203,7 @@ const WASTE_TYPES = [
   }
   
   function restartGame() {
-    score = 0;
-    lives = 3;
-    isGameOver = false;
-    invulnerable = false;
+    score = 0; lives = 3; isGameOver = false; invulnerable = false;
     scoreText.setText('Score: 0');
     livesText.setText('Lives: 3');
     if (gameOverText) gameOverText.destroy();

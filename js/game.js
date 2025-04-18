@@ -1,14 +1,14 @@
 // === CONFIGURATION DES DÉCHETS ET PROJECTILES ===
 const WASTE_TYPES = [
-    { key: 'waste_recycle',    sprite: 'waste_plastic.png',   bin: 'recyclage' },
-    { key: 'waste_glass',      sprite: 'waste_glass.png',     bin: 'verre'     },
-    { key: 'waste_black_bag',  sprite: 'waste_black_bag.png',  bin: 'black_bin' },
+    { key: 'waste_recycle',    sprite: 'waste_plastic.png',   bin: 'jaune' },
+    { key: 'waste_glass',      sprite: 'waste_glass.png',     bin: 'bleu'     },
+    { key: 'waste_black_bag',  sprite: 'waste_black_bag.png',  bin: 'noir' },
   ];
   
   const PROJECTILE_TYPES = [
-    { key: 'bullet_green_bin', sprite: 'bullet_green_bin.png', bin: 'recyclage' },
-    { key: 'bullet_blue_bin',  sprite: 'bullet_blue_bin.png',  bin: 'verre'     },
-    { key: 'bullet_black_bin', sprite: 'bullet_black_bin.png', bin: 'black_bin' },
+    { key: 'bullet_green_bin', sprite: 'bullet_green_bin.png', bin: 'jaune' },
+    { key: 'bullet_blue_bin',  sprite: 'bullet_blue_bin.png',  bin: 'bleu'     },
+    { key: 'bullet_black_bin', sprite: 'bullet_black_bin.png', bin: 'noir' },
   ];
   
   const BINS = PROJECTILE_TYPES.map(p => p.bin);
@@ -105,6 +105,13 @@ const WASTE_TYPES = [
     bullets.children.each(b => {
       if (b.active && b.y < 0) b.destroy();
     }, this);
+
+    // **NOUVEAU** : nettoyage déchets hors-écran
+  wasteGroup.children.each(w => {
+    if (w.active && w.y > config.height) {
+      w.destroy();
+    }
+  }, this);
   
     // **Spawn** nouvelle vague si le groupe est vide
     if (wasteGroup.countActive(true) === 0) {
@@ -135,6 +142,8 @@ const WASTE_TYPES = [
     waste.destroy();
     if (chosenBin === correctBin) score += 10;
     else { score -= 5; loseLife.call(this); }
+    if (score < 0) score = 0;
+    if (score > score + 100 ) wasteSpeed = wasteSpeed + 10;
     scoreText.setText('Score: ' + score);
   
     // spawn si plus aucun actif
@@ -189,8 +198,12 @@ const WASTE_TYPES = [
   }
   
   function createWaste(scene) {
-    if (wasteGroup) wasteGroup.clear(true, true);
-    wasteGroup = scene.physics.add.group();
+    console.log(wasteGroup)
+    if (wasteGroup) {
+      wasteGroup.clear(true, true);
+    } else { 
+      wasteGroup=scene.physics.add.group();  // Il ne faut pas refaire cette ligne
+    }
     WASTE_TYPES.forEach(w => {
       const count = Phaser.Math.Between(2, 4);
       for (let i = 0; i < count; i++) {

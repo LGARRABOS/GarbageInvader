@@ -1,9 +1,19 @@
 // === CONFIGURATION DES DÉCHETS ET PROJECTILES ===
 const WASTE_TYPES = [
-    { key: 'waste_recycle',    sprite: 'waste_plastic.png',   bin: 'jaune' },
-    { key: 'waste_glass',      sprite: 'waste_glass.png',     bin: 'bleu'     },
-    { key: 'waste_black_bag',  sprite: 'waste_black_bag.png',  bin: 'noir' },
+    { key: 'waste_recycle', sprite: 'waste_plastic.png', bin: 'jaune',
+      save: { pulls: 1800, wood: 1410, water: 48.2 } },
+    { key: 'waste_glass',   sprite: 'waste_glass.png',   bin: 'bleu',
+      save: { bottles: 2222, sand: 660, water: 1.17 } },
+    { key: 'waste_black_bag', sprite: 'waste_black_bag.png', bin: 'noir',
+      save: {} }
   ];
+  
+  // === ÉCONOMIES DE TRI ===
+const savings = {
+    waste_recycle:   { pulls: 0,    wood: 0,    water: 0   },
+    waste_glass:     { bottles: 0,  sand: 0,    water: 0   },
+    waste_black_bag: {}
+  };
   
   const PROJECTILE_TYPES = [
     { key: 'bullet_green_bin', sprite: 'bullet_green_bin.png', bin: 'jaune' },
@@ -31,7 +41,7 @@ const WASTE_TYPES = [
   // === VARIABLES GLOBALES ===
   let player, cursors, bullets, wasteGroup;
   let lastFired = 0, score = 0, lives = 3;
-  let scoreText, livesText, binText, gameOverText;
+  let scoreText, livesText, binText, gameOverText, savingsText;
   let invulnerable = false, isGameOver = false;
   let moveWasteTimer, wasteSpeed = 60;
   
@@ -136,15 +146,28 @@ const WASTE_TYPES = [
   }
   
   function hitWaste(bullet, waste) {
+    const typeKey = waste.texture.key;
     const chosenBin = bullet.getData('bin'),
           correctBin = waste.getData('bin');
     bullet.destroy();
     waste.destroy();
-    if (chosenBin === correctBin) score += 10;
+    if (chosenBin === correctBin){
+        score += 10;
+        const cfg = WASTE_TYPES.find(w => w.key === typeKey);
+            if (cfg && cfg.save) {
+            const store = savings[typeKey];
+            for (const k in cfg.save) {
+            store[k] = (store[k] || 0) + cfg.save[k];
+    }
+  }
+    }
+    
     else { score -= 5; loseLife.call(this); }
     if (score < 0) score = 0;
     if (score > score + 100 ) wasteSpeed = wasteSpeed + 10;
     scoreText.setText('Score: ' + score);
+
+    
   
     // spawn si plus aucun actif
     if (wasteGroup.countActive(true) === 0 && !isGameOver) {
@@ -183,8 +206,20 @@ const WASTE_TYPES = [
     gameOverText = this.add.text(
       config.width/2, config.height/2,
       'Game Over',
-      { fontSize: '64px', fill: '#fff' }
+      { fontSize: '64px', fill: '#000' }
     ).setOrigin(0.5);
+
+    const r = savings.waste_recycle;
+    const g = savings.waste_glass;
+    const lines = [
+        `Plastique trié → ${r.pulls} pulls, ${r.wood} kg bois, ${r.water} m³ eau`,
+        `Verre trié → ${g.bottles} bouteilles, ${g.sand} kg sable, ${g.water} m³ eau`
+    ];
+    savingsText = this.add.text(
+        config.width/2, config.height/2 + 20,
+        lines,
+        { fontSize:'16px', fill:'#000', align:'center' }
+     ).setOrigin(0.5, 0);
   }
   
   function moveWasteDown() {
@@ -220,11 +255,18 @@ const WASTE_TYPES = [
     scoreText.setText('Score: 0');
     livesText.setText('Lives: 3');
     if (gameOverText) gameOverText.destroy();
+    if (savingsText) savingsText.destroy();
     this.physics.resume();
     player.clearTint().setPosition(config.width/2, config.height - 100);
     bullets.clear(true, true);
     createWaste(this);
     moveWasteTimer.paused = false;
+
+    for (const key in savings) {
+        for (const res in savings[key]) {
+          savings[key][res] = 0;
+        }
+      }
   }
   
   window.addEventListener('resize', () => {

@@ -1,18 +1,14 @@
 // === CONFIGURATION DES DÉCHETS ET PROJECTILES ===
 const WASTE_TYPES = [
-    { key: 'waste_recycle', sprite: 'waste_plastic.png', bin: 'recyclage' },
-    { key: 'waste_glass',   sprite: 'waste_glass.png',   bin: 'verre'     },
-    { key: 'waste_black_bag',   sprite: 'waste-black_bag.png',   bin: 'black_bin'    },
-    // pour ajouter un nouveau déchet :
-    // { key: 'waste_metal', sprite: 'waste_metal.png', bin: 'metal' },
+    { key: 'waste_recycle',    sprite: 'waste_plastic.png',   bin: 'recyclage' },
+    { key: 'waste_glass',      sprite: 'waste_glass.png',     bin: 'verre'     },
+    { key: 'waste_black_bag',  sprite: 'waste-black_bag.png',  bin: 'black_bin' },
   ];
   
   const PROJECTILE_TYPES = [
     { key: 'bullet_green_bin', sprite: 'bullet_green_bin.png', bin: 'recyclage' },
-    { key: 'bullet_blue_bin',     sprite: 'bullet_blue_bin.png',     bin: 'verre'     },
-    { key: 'bullet_black_bin',    sprite: 'bullet_black_bin.png',    bin: 'black_bin'    },
-    // pour ajouter un nouveau projectile :
-    // { key: 'bullet_metal', sprite: 'bullet_metal.png', bin: 'metal' }
+    { key: 'bullet_blue_bin',  sprite: 'bullet_blue_bin.png',  bin: 'verre'     },
+    { key: 'bullet_black_bin', sprite: 'bullet_black_bin.png', bin: 'black_bin' },
   ];
   
   const BINS = PROJECTILE_TYPES.map(p => p.bin);
@@ -27,7 +23,7 @@ const WASTE_TYPES = [
       default: 'arcade',
       arcade: { gravity: { y: 0 }, debug: true }
     },
-    scene: { preload, create, update },
+    scene: { preload, create, update }
   };
   
   const game = new Phaser.Game(config);
@@ -41,40 +37,30 @@ const WASTE_TYPES = [
   
   // === CHARGEMENT DES ASSETS ===
   function preload() {
-    // Joueur
     this.load.image('player', 'assets/images/human.png');
-  
-    // Déchets
-    WASTE_TYPES.forEach(w =>
-      this.load.image(w.key, `assets/images/${w.sprite}`)
-    );
-  
-    // Projectiles
-    PROJECTILE_TYPES.forEach(p =>
-      this.load.image(p.key, `assets/images/${p.sprite}`)
-    );
+    WASTE_TYPES.forEach(w => this.load.image(w.key, `assets/images/${w.sprite}`));
+    PROJECTILE_TYPES.forEach(p => this.load.image(p.key, `assets/images/${p.sprite}`));
   }
   
   // === CREATION DU JEU ===
   function create() {
-    // Arrière-plan
     this.cameras.main.setBackgroundColor('#f0f0f0');
-    // Joueur (humain)
-    player = this.physics.add
-      .sprite(config.width/2, config.height - 100, 'player')
+  
+    // Joueur
+    player = this.physics.add.sprite(config.width/2, config.height - 100, 'player')
       .setCollideWorldBounds(true)
       .setScale(0.1);
   
-    // Groupe de projectiles (sprites)
+    // Projectiles
     bullets = this.physics.add.group({
       classType: Phaser.Physics.Arcade.Image,
       maxSize: 20
     });
   
-    // Groupe de déchets
+    // Première vague
     createWaste(this);
   
-    // Clavier et changement de bac
+    // Clavier
     cursors = this.input.keyboard.createCursorKeys();
     this.input.keyboard.on('keydown-ONE',   () => currentBin = BINS[0]);
     this.input.keyboard.on('keydown-TWO',   () => currentBin = BINS[1]);
@@ -84,20 +70,29 @@ const WASTE_TYPES = [
       else shootBullet(this.time.now);
     }, this);
   
-    // UI : score, vies, bac courant
-    scoreText = this.add.text(10, 10, 'Score: 0',   { fontSize: '16px', fill: '#000' });
-    livesText = this.add.text(10, 30, 'Lives: 3',   { fontSize: '16px', fill: '#000' });
+    // UI
+    scoreText = this.add.text(10, 10, 'Score: 0', { fontSize: '16px', fill: '#000' });
+    livesText = this.add.text(10, 30, 'Lives: 3', { fontSize: '16px', fill: '#000' });
     binText   = this.add.text(10, 50, 'Bac: ' + currentBin, { fontSize: '16px', fill: '#000' });
   
     // Collisions
     this.physics.add.collider(bullets, wasteGroup, hitWaste, null, this);
     this.physics.add.overlap(player, wasteGroup, wasteHitsPlayer, null, this);
   
-    // Timer pour descendre les déchets
+    // Descente
     moveWasteTimer = this.time.addEvent({
       delay: 2000,
       callback: moveWasteDown,
       callbackScope: this,
+      loop: true
+    });
+  
+    // **NOUVEAU** : Timer de spawn de vagues
+    this.time.addEvent({
+      delay: 8000,              // toutes les 8 secondes
+      callback: () => {
+        if (!isGameOver) createWaste(this);
+      },
       loop: true
     });
   }
@@ -107,23 +102,18 @@ const WASTE_TYPES = [
     if (isGameOver) return;
   
     // Déplacement du joueur
-    if (cursors.left.isDown)  player.setVelocityX(-300);
+    if (cursors.left.isDown)       player.setVelocityX(-300);
     else if (cursors.right.isDown) player.setVelocityX(300);
-    else player.setVelocityX(0);
+    else                             player.setVelocityX(0);
     player.setVelocityY(0);
   
-    // Met à jour l'affichage du bac
+    // UI du bac
     binText.setText('Bac: ' + currentBin);
   
-    // Nettoyage des projectiles hors-écran
-    bullets.children.each(bullet => {
-      if (bullet.active && bullet.y < 0) bullet.destroy();
+    // Nettoyage des projectiles hors écran
+    bullets.children.each(b => {
+      if (b.active && b.y < 0) b.destroy();
     }, this);
-  
-    // Si tous les déchets sont détruits, nouvelle vague
-    if (wasteGroup.countActive(true) === 0) {
-      createWaste(this);
-    }
   }
   
   // === FONCTIONS DE JEU ===
@@ -134,19 +124,20 @@ const WASTE_TYPES = [
     const bullet = bullets.get(player.x, player.y - 20, p.key);
     if (!bullet) return;
     bullet
-    .setScale(0.05)         
-    .setActive(true)
-    .setVisible(true)
-    .setVelocityY(-300)
-    .setData('bin', currentBin);
+      .setScale(0.05)
+      .setActive(true)
+      .setVisible(true)
+      .setVelocityY(-300)
+      .setData('bin', currentBin);
     lastFired = time + 200;
   }
   
   function hitWaste(bullet, waste) {
-    const chosenBin = bullet.getData('bin');
-    const correctBin = waste.getData('bin');
+    const chosenBin = bullet.getData('bin'),
+          correctBin = waste.getData('bin');
     bullet.destroy();
     waste.destroy();
+  
     if (chosenBin === correctBin) score += 10;
     else {
       score -= 5;
@@ -167,10 +158,10 @@ const WASTE_TYPES = [
     if (lives > 0) {
       invulnerable = true;
       player.setTint(0xff0000);
-      this.time.addEvent({
-        delay: 1000,
-        callback: () => { invulnerable = false; player.clearTint(); }
-      });
+      this.time.addEvent({ delay: 1000, callback: () => {
+        invulnerable = false;
+        player.clearTint();
+      }});
     } else {
       gameOver.call(this);
     }
@@ -198,7 +189,7 @@ const WASTE_TYPES = [
       const count = Phaser.Math.Between(2, 4);
       for (let i = 0; i < count; i++) {
         const x = Phaser.Math.Between(50, config.width - 50);
-        const wSprite = wasteGroup.create(x, Phaser.Math.Between(50, 150), w.key)
+        wasteGroup.create(x, Phaser.Math.Between(50, 150), w.key)
           .setData('bin', w.bin)
           .setScale(0.05);
       }
@@ -206,12 +197,10 @@ const WASTE_TYPES = [
   }
   
   function restartGame() {
-    // Réinitialisation
     score = 0;
     lives = 3;
     isGameOver = false;
     invulnerable = false;
-    // UI
     scoreText.setText('Score: 0');
     livesText.setText('Lives: 3');
     if (gameOverText) gameOverText.destroy();

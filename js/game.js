@@ -1,16 +1,16 @@
 // === CONFIGURATION DES DÉCHETS ET PROJECTILES ===
 const WASTE_TYPES = [
-    { key: 'waste_recycle', sprite: 'waste_plastic.png', bin: 'recycle' },
+    { key: 'waste_recycle', sprite: 'waste_plastic.png', bin: 'recyclage' },
     { key: 'waste_glass',   sprite: 'waste_glass.png',   bin: 'verre'     },
-    { key: 'waste_paper',   sprite: 'waste_paper.png',   bin: 'papier'    },
+    { key: 'waste_black_bag',   sprite: 'waste-black_bag.png',   bin: 'black_bin'    },
     // pour ajouter un nouveau déchet :
     // { key: 'waste_metal', sprite: 'waste_metal.png', bin: 'metal' },
   ];
   
   const PROJECTILE_TYPES = [
-    { key: 'bullet_plastique', sprite: 'bullet_recycle.png', bin: 'recycle' },
-    { key: 'bullet_verre',     sprite: 'bullet_verre.png',     bin: 'verre'     },
-    { key: 'bullet_papier',    sprite: 'bullet_papier.png',    bin: 'papier'    },
+    { key: 'bullet_green_bin', sprite: 'bullet_green_bin.png', bin: 'recyclage' },
+    { key: 'bullet_blue_bin',     sprite: 'bullet_blue_bin.png',     bin: 'verre'     },
+    { key: 'bullet_black_bin',    sprite: 'bullet_black_bin.png',    bin: 'black_bin'    },
     // pour ajouter un nouveau projectile :
     // { key: 'bullet_metal', sprite: 'bullet_metal.png', bin: 'metal' }
   ];
@@ -25,9 +25,9 @@ const WASTE_TYPES = [
     height: window.innerHeight,
     physics: {
       default: 'arcade',
-      arcade: { gravity: { y: 0 }, debug: false }
+      arcade: { gravity: { y: 0 }, debug: true }
     },
-    scene: { preload, create, update }
+    scene: { preload, create, update },
   };
   
   const game = new Phaser.Game(config);
@@ -57,6 +57,8 @@ const WASTE_TYPES = [
   
   // === CREATION DU JEU ===
   function create() {
+    // Arrière-plan
+    this.cameras.main.setBackgroundColor('#f0f0f0');
     // Joueur (humain)
     player = this.physics.add
       .sprite(config.width/2, config.height - 100, 'player')
@@ -83,9 +85,9 @@ const WASTE_TYPES = [
     }, this);
   
     // UI : score, vies, bac courant
-    scoreText = this.add.text(10, 10, 'Score: 0',   { fontSize: '16px', fill: '#fff' });
-    livesText = this.add.text(10, 30, 'Lives: 3',   { fontSize: '16px', fill: '#fff' });
-    binText   = this.add.text(10, 50, 'Bac: ' + currentBin, { fontSize: '16px', fill: '#fff' });
+    scoreText = this.add.text(10, 10, 'Score: 0',   { fontSize: '16px', fill: '#000' });
+    livesText = this.add.text(10, 30, 'Lives: 3',   { fontSize: '16px', fill: '#000' });
+    binText   = this.add.text(10, 50, 'Bac: ' + currentBin, { fontSize: '16px', fill: '#000' });
   
     // Collisions
     this.physics.add.collider(bullets, wasteGroup, hitWaste, null, this);
@@ -132,10 +134,11 @@ const WASTE_TYPES = [
     const bullet = bullets.get(player.x, player.y - 20, p.key);
     if (!bullet) return;
     bullet
-      .setActive(true)
-      .setVisible(true)
-      .setVelocityY(-300)
-      .setData('bin', currentBin);
+    .setScale(0.05)         
+    .setActive(true)
+    .setVisible(true)
+    .setVelocityY(-300)
+    .setData('bin', currentBin);
     lastFired = time + 200;
   }
   
@@ -197,7 +200,7 @@ const WASTE_TYPES = [
         const x = Phaser.Math.Between(50, config.width - 50);
         const wSprite = wasteGroup.create(x, Phaser.Math.Between(50, 150), w.key)
           .setData('bin', w.bin)
-          .setScale(0.1);
+          .setScale(0.05);
       }
     });
   }
